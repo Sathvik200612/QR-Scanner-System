@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Freshers Party - Students</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f9f9f9; }
+        header { display: flex; align-items: center; margin-bottom: 30px; }
+        header img { height: 60px; margin-right: 20px; }
+        header h1 { color: #333; }
+
+        .paid { color: green; font-weight: bold; }
+        .unpaid { color: red; font-weight: bold; }
+        .inside { color: blue; font-weight: bold; }
+        .outside { color: gray; font-weight: bold; }
+        .claimed { color: purple; font-weight: bold; }
+        .not-claimed { color: orange; font-weight: bold; }
+
+        a.qr-link { text-decoration: none; color: #ff9800; font-weight: bold; }
+        button.scan-btn { padding: 6px 12px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; background-color: #4CAF50; color: white; transition: 0.3s; }
+        button.scan-btn:hover { background-color: #45a049; }
+
+        .container { max-width: 1200px; margin: auto; }
+        .generate-link a { text-decoration: none; color: #fff; background-color: #2196F3; padding: 8px 15px; border-radius: 4px; font-weight: bold; transition: 0.3s; }
+        .generate-link a:hover { background-color: #0b7dda; }
+
+        table th, table td { vertical-align: middle; text-align: center; }
+        tr:hover { background-color: #f1f1f1; }
+    </style>
+</head>
+<body>
+<div class="container my-4">
+    <header class="mb-4">
+        <img src="/static/college_logo.png.png" alt="College Logo">
+        <h1>Freshers Party - Student List</h1>
+    </header>
+
+    <div class="generate-link mb-3">
+        <a class="btn btn-primary" href="/generate_qr">Generate QR Codes for Paid Students</a>
+        <a class="btn btn-secondary ms-2" href="/generate_lunch_qr">Generate Lunch QR Codes</a>
+    </div>
+
+    <div class="table-responsive shadow rounded">
+        <table class="table table-striped table-hover table-bordered bg-white">
+            <thead class="table-success">
+                <tr>
+                    <th>Roll No</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Payment Status</th>
+                    <th>Entry Status</th>
+                    <th>QR Code</th>
+                    <th>Lunch Ticket</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.roll }}</td>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.email }}</td>
+                    <td class="{{ 'paid' if student.paid else 'unpaid' }}">
+                        {{ 'Paid' if student.paid else 'Unpaid' }}
+                    </td>
+                    <td class="{{ student.status }}">
+                        {{ student.status | capitalize }}
+                    </td>
+                    <td>
+                        {% if student.paid %}
+                            <a class="qr-link btn btn-warning btn-sm me-2" href="/ticket/{{ student.token }}" target="_blank">View QR</a>
+                            <button class="scan-btn btn btn-success btn-sm" onclick="simulateScan('{{ student.token }}')">Scan</button>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="{{ 'claimed' if student.lunch_scanned else 'not-claimed' }}">
+                        {% if student.lunch_scanned %}
+                            Claimed
+                        {% elif student.paid %}
+                            <a class="qr-link btn btn-info btn-sm me-2" href="/lunch_ticket/{{ student.lunch_token }}" target="_blank">View QR</a>
+                            <button class="scan-btn btn btn-primary btn-sm" onclick="simulateLunchScan('{{ student.lunch_token }}')">Scan</button>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function simulateScan(token) {
+    fetch(`/api/verify?token=${token}`)
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        })
+        .catch(err => {
+            alert("Error scanning QR");
+            console.error(err);
+        });
+}
+
+function simulateLunchScan(lunchToken) {
+    fetch(`/api/verify_lunch?token=${lunchToken}`)
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        })
+        .catch(err => {
+            alert("Error scanning lunch QR");
+            console.error(err);
+        });
+}
+</script>
+</body>
+</html>
