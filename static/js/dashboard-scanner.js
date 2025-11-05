@@ -24,6 +24,9 @@ async function startCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
+    // mobile autoplay helpers
+    video.muted = true;
+    video.playsInline = true;
     await video.play();
     statusEl.textContent = 'Camera started — point at a QR code';
     scanning = true;
@@ -128,24 +131,33 @@ function handleDecoded(text) {
     return;
   }
 
+  // Improved fetch handler: updates lunch-cell when lunch QR scanned
   statusEl.textContent = 'Verifying...';
   fetch(`${endpoint}?token=${encodeURIComponent(token)}`)
     .then(resp => resp.json())
     .then(data => {
       if (data.status === 'success') {
         statusEl.textContent = 'OK: ' + data.message;
-        // update the table row immediately
-        // server returns message but we don't depend on returned status name; we'll fetch file to get latest if needed
-        // Try to parse status from message (best-effort)
-        let newStatus = null;
-        if (/Entry allowed/i.test(data.message)) newStatus = 'inside';
-        else if (/Exit recorded/i.test(data.message)) newStatus = 'outside';
-        updateRow(token, newStatus, undefined);
         showToast(data.message);
+
+        if (endpoint === '/api/verify') {
+          // Entry verify: toggle status between inside/outside based on message
+          let newStatus = null;
+          if (/Entry allowed/i.test(data.message)) newStatus = 'inside';
+          else if (/Exit recorded/i.test(data.message)) newStatus = 'outside';
+          updateRow(token, newStatus, undefined);
+        } else if (endpoint === '/api/verify_lunch') {
+          // Lunch verify: mark lunch as claimed
+          // token may be like "lunch_<token>" sometimes; normalize
+          let baseToken = token.replace(/^lunch_/, '');
+          updateRow(baseToken, undefined, true);
+        }
       } else {
         statusEl.textContent = 'Error: ' + data.message;
         showToast(data.message);
       }
+
+      // cooldown before next scan
       setTimeout(()=> { lastHandled = null; statusEl.textContent = 'Ready for next QR'; requestAnimationFrame(tick); }, 1400);
     })
     .catch(err => {
